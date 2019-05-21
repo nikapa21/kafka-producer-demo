@@ -25,8 +25,6 @@ public class ProducerDemoWithCallback {
     List<BusLine> publisherBusLines = new ArrayList<>();
     List<RouteCode> publisherRouteCodes = new ArrayList<>();
     List<BusPosition> publisherBusPositions = new ArrayList<>();
-    HashSet<Topic> topicHashSet = new HashSet<>();
-    HashSet<String> lineCodeHashSet = new HashSet<>();
 
     public ProducerDemoWithCallback(String addr, int port) {
         this.addr = addr;
@@ -59,7 +57,7 @@ public class ProducerDemoWithCallback {
 
             //create the Kafka Producer
 
-            KafkaProducer<String, String> producer = new KafkaProducer<String, String>(properties);
+            KafkaProducer<String, String> producer = new KafkaProducer(properties);
 
             for(Value value : producerDemoWithCallback.publisherValues) {
                 Topic topic = new Topic(value.getBuslineId());
@@ -209,7 +207,6 @@ public class ProducerDemoWithCallback {
             } catch(IOException e){
                 e.printStackTrace();
             }
-
         }
     }
 
