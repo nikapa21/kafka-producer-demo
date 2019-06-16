@@ -65,12 +65,11 @@ public class ProducerDemoWithCallback {
 
             int i = 0;
             for(Value value : producerDemoWithCallback.publisherValues) {
-                if(value.getRouteCode().equals("1993")) {
 
                     Topic topic = new Topic(value.getBuslineId());
                     Message message = new Message(topic, value);
 
-                    ProducerRecord<String, String> record = new ProducerRecord<>(topic.getBusLineInput(), message.value.toString());
+                    ProducerRecord<String, String> record = new ProducerRecord<>("topic-input-data", message.value.toString());
 //                if(topic.getBusLineInput().equals("topic-025-input")) {}
 
 //                    try {
@@ -97,7 +96,7 @@ public class ProducerDemoWithCallback {
                             }
                         }
                     });
-                }
+
                 i++;
             }
 
