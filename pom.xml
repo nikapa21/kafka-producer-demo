@@ -36,6 +36,7 @@
             <version>1.7.25</version>
             <!--<scope>test</scope>-->
         </dependency>
+        <!-- https://mvnrepository.com/artifact/kafka-utils/kafka-utils -->
 
     </dependencies>
 

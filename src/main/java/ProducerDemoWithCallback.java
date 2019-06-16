@@ -1,3 +1,4 @@
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
@@ -6,10 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,15 +32,17 @@ public class ProducerDemoWithCallback {
     public static void main(String[] args) {
 
         //find all the vehicle ids in one set
+        String busPositionFile = args[0];
 
-        HashSet<Integer> vehicleIds = findAllVehicleIdsSet();
+        HashSet<Integer> vehicleIds = findAllVehicleIdsSet(busPositionFile);
 
         for(int vehicleId : vehicleIds) {
 
-            //create the Kafka Producer
+        //create the Kafka Producer
 
+//        int vehicleId = 10372;
             ProducerDemoWithCallback producerDemoWithCallback = new ProducerDemoWithCallback(null,0);
-            producerDemoWithCallback.initiateTopicAndValueList(vehicleId);
+            producerDemoWithCallback.initiateTopicAndValueList(vehicleId, busPositionFile);
 
             final Logger logger = LoggerFactory.getLogger(ProducerDemoWithCallback.class);
 
@@ -54,41 +54,51 @@ public class ProducerDemoWithCallback {
             properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+//            properties.setProperty(ProducerConfig.PARTITIONER_CLASS_CONFIG, CustomPartitioner.class.getName());
 
             //create the Kafka Producer
-
             KafkaProducer<String, String> producer = new KafkaProducer(properties);
 
-            for(Value value : producerDemoWithCallback.publisherValues) {
-                Topic topic = new Topic(value.getBuslineId());
-                Message message = new Message(topic, value);
 
-                ProducerRecord<String, String> record =
-                        new ProducerRecord<>(topic.getBusLineInput(), message.value.toString());
-                if(topic.getBusLineInput().equals("topic-025-input")) {
+//            producerDemoWithCallback.publisherValues.sort((Value s1, Value s2) ->s1.getInfo().compareTo(s2.getInfo()));
+//            System.out.println(producerDemoWithCallback.publisherValues);
+
+            int i = 0;
+            for(Value value : producerDemoWithCallback.publisherValues) {
+                if(value.getRouteCode().equals("1993")) {
+
+                    Topic topic = new Topic(value.getBuslineId());
+                    Message message = new Message(topic, value);
+
+                    ProducerRecord<String, String> record = new ProducerRecord<>(topic.getBusLineInput(), message.value.toString());
+//                if(topic.getBusLineInput().equals("topic-025-input")) {}
+
 //                    try {
 //                        Thread.sleep(500);
 //                    } catch (InterruptedException e) {
 //                        e.printStackTrace();
 //                    }
-                }
-                //send data - asynchronous
-                producer.send(record, new Callback() {
-                    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                        //executes every time a record is successfully sent or an exception is thrown
-                        if (e == null) {
-                            //the record was successfully sent
-                            logger.info("Received new metadata: \n" +
-                                    "Topic:" + recordMetadata.topic() + "\n" +
-                                    "Partition:" + recordMetadata.partition() + "\n" +
-                                    "Offset:" + recordMetadata.offset() + "\n" +
-                                    "Timestamp:" + recordMetadata.timestamp());
-                        } else {
-                            logger.error("Error while producing", e);
-                        }
-                    }
-                });
 
+                //send data - asynchronous
+
+                    producer.send(record, new Callback() {
+                        public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                            //executes every time a record is successfully sent or an exception is thrown
+                            if (e == null) {
+                                //the record was successfully sent
+                                logger.info(message.value.toString());
+//                                logger.info("Received new metadata: \n" +
+//                                        "Topic:" + recordMetadata.topic() + "\n" +
+//                                        "Partition:" + recordMetadata.partition() + "\n" +
+//                                        "Offset:" + recordMetadata.offset() + "\n" +
+//                                        "Timestamp:" + recordMetadata.timestamp());
+                            } else {
+                                logger.error("Error while producing", e);
+                            }
+                        }
+                    });
+                }
+                i++;
             }
 
             //flush data
@@ -99,10 +109,10 @@ public class ProducerDemoWithCallback {
 
     }
 
-    private static HashSet<Integer> findAllVehicleIdsSet() {
+    private static HashSet<Integer> findAllVehicleIdsSet(String busPositionFile) {
 
         HashSet<Integer> vehicleIds = new HashSet<>();
-        String busPositionsFile = "./Dataset/DS_project_dataset/busPositionsNew.txt";
+        String busPositionsFile = "./Dataset/DS_project_dataset/"+busPositionFile;
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
 
         // read file into stream, try-with-resources
@@ -120,10 +130,10 @@ public class ProducerDemoWithCallback {
         return vehicleIds;
     }
 
-    private void initiateTopicAndValueList(int vehicleId) {
+    private void initiateTopicAndValueList(int vehicleId, String busPositionFile) {
 
         // Me vasi to vehicle id vres ola ta bus position objects apo to arxeio me ta bus positions
-        findFromBusPositionsFile(vehicleId);
+        findFromBusPositionsFile(vehicleId, busPositionFile);
 
         // Vres ola ta distinct route codes apo ta parapanw bus position objects
         List<String> distinctRouteCodes = publisherBusPositions.stream().map(BusPosition::getRouteCode).distinct().collect(Collectors.toList());
@@ -138,23 +148,24 @@ public class ProducerDemoWithCallback {
         findFromBusLinesFile(distinctLineCodes);
 
         findValueFromBusPositionsList();
+
         for (BusLine busline : publisherBusLines) {
             populateAllNullValues(busline);
         }
 
-        System.out.println(publisherValues.toString());
+//        System.out.println(publisherValues.toString());
 
-        System.out.print("Vehicle with id " + vehicleId + " is responsible for the following lines/topics: ");
+//        System.out.print("Vehicle with id " + vehicleId + " is responsible for the following lines/topics: ");
         for(BusLine busLine: publisherBusLines) {
             topics.add(new Topic(busLine.getLineId()));
-            System.out.print(busLine.getLineId() + " ");
+//            System.out.print(busLine.getLineId() + " ");
         }
         System.out.println();
     }
 
-    private void findFromBusPositionsFile(int vehicleId) {
+    private void findFromBusPositionsFile(int vehicleId, String busPositionFile) {
 
-        String busPositionsFile = "./Dataset/DS_project_dataset/busPositionsNew.txt";
+        String busPositionsFile = "./Dataset/DS_project_dataset/"+busPositionFile;
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
 
         // read file into stream, try-with-resources
