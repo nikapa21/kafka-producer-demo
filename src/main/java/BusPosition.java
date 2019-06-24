@@ -1,20 +1,21 @@
-import java.io.Serializable;
+public class BusPosition {
 
-public class BusPosition implements Serializable {
+    final static int MAX_ALLOWED_DEVIATION = 2;
+
     private String lineCode;
     private String routeCode;
     private String vehicleId;
     private double latitude;
-    private double longitude;
-    private String timestampOfBusPosition;
+    private double longtitude;
+    private String timeStampOfBusPosition;
 
-    public BusPosition(String lineCode, String routeCode, String vehicleId, double latitude, double longitude, String timestampOfBusPosition) {
+    public BusPosition(String lineCode, String routeCode, String vehicleId, double latitude, double longtitude, String timeStampOfBusPosition) {
         this.lineCode = lineCode;
         this.routeCode = routeCode;
         this.vehicleId = vehicleId;
         this.latitude = latitude;
-        this.longitude = longitude;
-        this.timestampOfBusPosition = timestampOfBusPosition;
+        this.longtitude = longtitude;
+        this.timeStampOfBusPosition = timeStampOfBusPosition;
     }
 
     public String getLineCode() {
@@ -30,7 +31,7 @@ public class BusPosition implements Serializable {
     }
 
     public void setRouteCode(String routeCode) {
-        routeCode = routeCode;
+        this.routeCode = routeCode;
     }
 
     public String getVehicleId() {
@@ -49,20 +50,61 @@ public class BusPosition implements Serializable {
         this.latitude = latitude;
     }
 
-    public double getLongitude() {
-        return longitude;
+    public double getLongtitude() {
+        return longtitude;
     }
 
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public void setLongtitude(double longtitude) {
+        this.longtitude = longtitude;
     }
 
-    public String getTimestampOfBusPosition() {
-        return timestampOfBusPosition;
+    public String getTimeStampOfBusPosition() {
+        return timeStampOfBusPosition;
     }
 
-    public void setTimestampOfBusPosition(String timestampOfBusPosition) {
-        this.timestampOfBusPosition = timestampOfBusPosition;
+    public void setTimeStampOfBusPosition(String timeStampOfBusPosition) {
+        this.timeStampOfBusPosition = timeStampOfBusPosition;
     }
 
+    public boolean isInTheVicinity(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BusPosition that = (BusPosition) o;
+
+        boolean compareLatitude = false;
+        boolean compareLongtitude = false;
+
+        int thatLatAsInt = (int) (that.latitude * 10000);
+        int thatLonAsInt = (int) (that.longtitude * 10000);
+
+        int thisLatitudeAsInt = (int) (this.latitude * 10000);
+        int thisLongtitudeAsInt = (int) (this.longtitude * 10000);
+
+        if (Math.abs(thatLatAsInt-thisLatitudeAsInt) <= MAX_ALLOWED_DEVIATION) {
+            compareLatitude = true;
+        }
+
+        if (Math.abs(thatLonAsInt-thisLongtitudeAsInt) <= MAX_ALLOWED_DEVIATION) {
+            compareLongtitude = true;
+        }
+//
+//        if (that.latitude == this.latitude) compareLatitude = true;
+//        if (that.longtitude == this.longtitude) compareLongtitude = true;
+
+        boolean routeIsTheSame = that.routeCode.equals(this.routeCode);
+
+        return  compareLatitude && compareLongtitude;
+    }
+
+    @Override
+    public String toString() {
+        return "BusPosition{" +
+                "lineCode='" + lineCode + '\'' +
+                ", routeCode='" + routeCode + '\'' +
+                ", vehicleId='" + vehicleId + '\'' +
+                ", latitude=" + latitude +
+                ", longtitude=" + longtitude +
+                ", timeStampOfBusPosition='" + timeStampOfBusPosition + '\'' +
+                '}';
+    }
 }

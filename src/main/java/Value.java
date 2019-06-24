@@ -2,6 +2,7 @@ import java.io.Serializable;
 
 public class Value implements Serializable {
     //private Bus bus;
+    private int id;
     private String lineNumber;
     private String routeCode;
     private String vehicleId;
@@ -20,6 +21,26 @@ public class Value implements Serializable {
         this.info = info;
         this.latitude = latitude;
         this.longtitude = longtitude;
+    }
+
+    public Value(int id, String lineNumber, String routeCode, String vehicleId, String lineName, String buslineId, String info, double latitude, double longtitude) {
+        this.id = id;
+        this.lineNumber = lineNumber;
+        this.routeCode = routeCode;
+        this.vehicleId = vehicleId;
+        this.lineName = lineName;
+        this.buslineId = buslineId;
+        this.info = info;
+        this.latitude = latitude;
+        this.longtitude = longtitude;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getLineNumber() {
@@ -89,7 +110,8 @@ public class Value implements Serializable {
     @Override
     public String toString() {
         return "Value{" +
-                "lineNumber='" + lineNumber + '\'' +
+                "id=" + id +
+                ", lineNumber='" + lineNumber + '\'' +
                 ", routeCode='" + routeCode + '\'' +
                 ", vehicleId='" + vehicleId + '\'' +
                 ", lineName='" + lineName + '\'' +

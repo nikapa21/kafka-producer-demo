@@ -8,6 +8,8 @@ import java.awt.peer.ListPeer;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -39,8 +41,10 @@ public class CheckAlertDemo {
 
         String busPositionsFile = "./Dataset/DS_project_dataset/"+busPositionFile;
 
-        List<Record> publisherBusRecords = new ArrayList<>();
-        Map<String, Set<Coordinate>> rawCoordinatesPerTopic = new HashMap<>();
+        List<Value> publisherBusRecords = new ArrayList<>();
+        Map<String, List<BusPosition>> rawCoordinatesPerTopic = new HashMap<>();
+
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM  d yyyy hh:mm:ss:000a");
 
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
 
@@ -49,34 +53,34 @@ public class CheckAlertDemo {
 
             stream.map(line -> {
                 String[] fields = line.split(",");
-                Record record = new Record(fields[0], fields[1], fields[2], Double.parseDouble(fields[3]), Double.parseDouble(fields[4]), fields[5]);
-                return record; })
+                Value value = new Value(fields[1], fields[2], fields[3], "", fields[0], fields[6], Double.parseDouble(fields[4]), Double.parseDouble(fields[5]));
+                return value; })
                     .forEach(busPositionline -> publisherBusRecords.add(busPositionline));
 
         } catch(IOException e) {
             e.printStackTrace();
         }
 
-        for(Record record : publisherBusRecords) {
-            double x = record.getLatitude();
-            double y = record.getLongtitude();
+        for(Value value : publisherBusRecords) {
+            double x = value.getLatitude();
+            double y = value.getLongtitude();
 
-            Coordinate coordinate = new Coordinate(x, y);
+            BusPosition busPosition = new BusPosition(value.getLineNumber(), value.getRouteCode(), value.getVehicleId(), x, y, value.getInfo());
 
-            Set<Coordinate> raw = rawCoordinatesPerTopic.get(record.getRouteCode());
+            List<BusPosition> raw = rawCoordinatesPerTopic.get(value.getBuslineId());
             if (raw == null) {
-                raw = new HashSet<>();
-                raw.add(coordinate);
-                rawCoordinatesPerTopic.put(record.getRouteCode(), raw);
+                raw = new ArrayList<>();
+                raw.add(busPosition);
+                rawCoordinatesPerTopic.put(value.getBuslineId(), raw);
             }
             else {
-                raw.add(coordinate);
+                raw.add(busPosition);
             }
         }
 
-        String alertFile = "./Dataset/DS_project_dataset/busPositionsMix10false8181799.txt";
+        String alertFile = "./Dataset/DS_project_dataset/busAlertWithTopic.txt";
 
-        List<Record> alertFileRecords = new ArrayList<>();
+        List<Value> alertFileRecords = new ArrayList<>();
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
 
         // read file into stream, try-with-resources
@@ -84,41 +88,77 @@ public class CheckAlertDemo {
 
             stream.map(line -> {
                 String[] fields = line.split(",");
-                Record record = new Record(fields[0], fields[1], fields[2], Double.parseDouble(fields[3]), Double.parseDouble(fields[4]), fields[5]);
-                return record; })
+                Value value = new Value(fields[1], fields[2], fields[3], "", fields[0], fields[6], Double.parseDouble(fields[4]), Double.parseDouble(fields[5]));
+                return value; })
                     .forEach(busPositionline -> alertFileRecords.add(busPositionline));
 
         } catch(IOException e) {
             e.printStackTrace();
         }
 
-        int samplesOnRoute = 0;
         int alertCounter = 0;
 
-        for(Record record : alertFileRecords) {
-            double x = record.getLatitude();
-            double y = record.getLongtitude();
+        for(Value value : alertFileRecords) {
+            double x = value.getLatitude();
+            double y = value.getLongtitude();
 
-            Coordinate coordinate = new Coordinate(x, y);
+            BusPosition busPosition = new BusPosition(value.getLineNumber(), value.getRouteCode(), value.getVehicleId(), x, y, value.getInfo());
+            boolean coordinateIsOnRoute = false;
 
-            if (rawCoordinatesPerTopic.get(record.getRouteCode()) == null) {
+            if (rawCoordinatesPerTopic.get(value.getBuslineId()) == null) {
                 System.out.println("pigame na paroume sampled gia to topic kati pou den exoume raw ");
             }
-            else {
-                boolean coordinateIsOnCorrectRoute = rawCoordinatesPerTopic.get(record.getRouteCode()).stream().anyMatch(c -> c.equals(coordinate));
 
-                if (coordinateIsOnCorrectRoute) {
-//                    logger.info("All good keep receiving sampled data. So far " + ++samplesOnRoute);
-                } else {
+            else {
+
+                List<BusPosition> temporaryList = rawCoordinatesPerTopic.get(value.getBuslineId());
+
+                for(int index=0;index<temporaryList.size();index++) { // TODO refactor se while. An ginei refactor, de xreiazetai to teleutaio if if (coordinateIsOnRoute) break;
+
+                    BusPosition currentLocation = temporaryList.get(index);
+                    if (busPosition.isInTheVicinity(currentLocation)) {
+
+                        coordinateIsOnRoute = true;
+                        try {
+                            for (int i = index + 1; i < rawCoordinatesPerTopic.get(value.getBuslineId()).size(); i++) {
+                                BusPosition nextLocation = temporaryList.get(i);
+                                if (nextLocation.getRouteCode().equals(busPosition.getRouteCode())) {
+
+                                    Date firstParsedDate = null;
+                                    try {
+                                        firstParsedDate = dateFormat.parse(currentLocation.getTimeStampOfBusPosition().replaceAll("'", "").replaceAll(" info=", ""));
+                                    } catch (ParseException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    Date secondParsedDate = null;
+                                    try {
+                                        secondParsedDate = dateFormat.parse(nextLocation.getTimeStampOfBusPosition().replaceAll("'", "").replaceAll(" info=", ""));
+                                    } catch (ParseException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    int diff = Math.abs((int) secondParsedDate.getTime() - (int) firstParsedDate.getTime());
+
+                                    System.out.println("Current Location: " + currentLocation);
+                                    System.out.println("Next Location: " + nextLocation);
+                                    System.out.println("Ypologizoume oti tha einai stin epomeni stasi to polu se " + diff/1000 + " seconds!");
+                                    break;
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Current Location: " + currentLocation);
+                            System.out.println("Next Location: " + currentLocation);
+                            System.out.println("Ftasame sto telos tis diadromis! ");
+                        }
+                    }
+                    if (coordinateIsOnRoute) break;
+                }
+                if(!coordinateIsOnRoute){
                     logger.info("###############");
-                    logger.info("ALERT found. Alert count is " + ++alertCounter);
+                    logger.info("ALERT found. Alert count so far is " + ++alertCounter);
                 }
             }
-
         }
-
-
-
-
     }
 }

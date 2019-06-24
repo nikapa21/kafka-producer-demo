@@ -36,6 +36,8 @@ public class ProducerDemoWithCallback {
 
         HashSet<Integer> vehicleIds = findAllVehicleIdsSet(busPositionFile);
 
+        int id = 1;
+
         for(int vehicleId : vehicleIds) {
 
         //create the Kafka Producer
@@ -46,7 +48,7 @@ public class ProducerDemoWithCallback {
 
             final Logger logger = LoggerFactory.getLogger(ProducerDemoWithCallback.class);
 
-            String bootstrapServers = "127.0.0.1:9092";
+            String bootstrapServers = "127.0.0.1:9090, 127.0.0.1:9091, 127.0.0.1:9092, 127.0.0.1:9093";
 
             //create Producer properties
             Properties properties = new Properties();
@@ -54,22 +56,21 @@ public class ProducerDemoWithCallback {
             properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-//            properties.setProperty(ProducerConfig.PARTITIONER_CLASS_CONFIG, CustomPartitioner.class.getName());
 
             //create the Kafka Producer
             KafkaProducer<String, String> producer = new KafkaProducer(properties);
 
-
 //            producerDemoWithCallback.publisherValues.sort((Value s1, Value s2) ->s1.getInfo().compareTo(s2.getInfo()));
 //            System.out.println(producerDemoWithCallback.publisherValues);
 
-            int i = 0;
             for(Value value : producerDemoWithCallback.publisherValues) {
 
-                    Topic topic = new Topic(value.getBuslineId());
-                    Message message = new Message(topic, value);
+                value.setId(id);
 
-                    ProducerRecord<String, String> record = new ProducerRecord<>("topic-input-data", message.value.toString());
+                Topic topic = new Topic(value.getBuslineId());
+                Message message = new Message(topic, value);
+
+                ProducerRecord<String, String> record = new ProducerRecord<>("topic-input-data", message.value.toString());
 //                if(topic.getBusLineInput().equals("topic-025-input")) {}
 
 //                    try {
@@ -78,26 +79,25 @@ public class ProducerDemoWithCallback {
 //                        e.printStackTrace();
 //                    }
 
-                //send data - asynchronous
+            //send data - asynchronous
 
-                    producer.send(record, new Callback() {
-                        public void onCompletion(RecordMetadata recordMetadata, Exception e) {
-                            //executes every time a record is successfully sent or an exception is thrown
-                            if (e == null) {
-                                //the record was successfully sent
-                                logger.info(message.value.toString());
+                producer.send(record, new Callback() {
+                    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                        //executes every time a record is successfully sent or an exception is thrown
+                        if (e == null) {
+                            //the record was successfully sent
+                            logger.info(message.value.toString());
 //                                logger.info("Received new metadata: \n" +
 //                                        "Topic:" + recordMetadata.topic() + "\n" +
 //                                        "Partition:" + recordMetadata.partition() + "\n" +
 //                                        "Offset:" + recordMetadata.offset() + "\n" +
 //                                        "Timestamp:" + recordMetadata.timestamp());
-                            } else {
-                                logger.error("Error while producing", e);
-                            }
+                        } else {
+                            logger.error("Error while producing", e);
                         }
-                    });
-
-                i++;
+                    }
+                });
+                id++;
             }
 
             //flush data
@@ -229,7 +229,7 @@ public class ProducerDemoWithCallback {
     private void findValueFromBusPositionsList() {
         for(BusPosition busPosition : publisherBusPositions){ // tha mporouse na ginei kai me stream.map() se java 8
             publisherValues.add(new Value(busPosition.getLineCode(), busPosition.getRouteCode(), busPosition.getVehicleId()
-                    , null, null, busPosition.getTimestampOfBusPosition(), busPosition.getLatitude(), busPosition.getLongitude()));
+                    , null, null, busPosition.getTimeStampOfBusPosition(), busPosition.getLatitude(), busPosition.getLongtitude()));
         }
     }
 
