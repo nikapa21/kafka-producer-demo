@@ -31,37 +31,33 @@ public class ProducerDemoWithCallback {
 
     public static void main(String[] args) {
 
-        //find all the vehicle ids in one set
+        final Logger logger = LoggerFactory.getLogger(ProducerDemoWithCallback.class);
+
+        String bootstrapServers = "127.0.0.1:9092";
+
+        //create Producer properties
+        Properties properties = new Properties();
+
+        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+        //create the Kafka Producer
+        KafkaProducer<String, String> producer = new KafkaProducer(properties);
+
         String busPositionFile = args[0];
 
-        HashSet<Integer> vehicleIds = findAllVehicleIdsSet(busPositionFile);
+        //find all the vehicle ids in one set
+        HashSet<String> vehicleIds = findAllVehicleIdsSet(busPositionFile);
 
         int id = 1;
 
-        for(int vehicleId : vehicleIds) {
+        for(String vehicleId : vehicleIds) {
 
         //create the Kafka Producer
 
-//        int vehicleId = 10372;
             ProducerDemoWithCallback producerDemoWithCallback = new ProducerDemoWithCallback(null,0);
             producerDemoWithCallback.initiateTopicAndValueList(vehicleId, busPositionFile);
-
-            final Logger logger = LoggerFactory.getLogger(ProducerDemoWithCallback.class);
-
-            String bootstrapServers = "127.0.0.1:9090, 127.0.0.1:9091, 127.0.0.1:9092, 127.0.0.1:9093";
-
-            //create Producer properties
-            Properties properties = new Properties();
-
-            properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-
-            //create the Kafka Producer
-            KafkaProducer<String, String> producer = new KafkaProducer(properties);
-
-//            producerDemoWithCallback.publisherValues.sort((Value s1, Value s2) ->s1.getInfo().compareTo(s2.getInfo()));
-//            System.out.println(producerDemoWithCallback.publisherValues);
 
             for(Value value : producerDemoWithCallback.publisherValues) {
 
@@ -71,27 +67,14 @@ public class ProducerDemoWithCallback {
                 Message message = new Message(topic, value);
 
                 ProducerRecord<String, String> record = new ProducerRecord<>("topic-input-data", message.value.toString());
-//                if(topic.getBusLineInput().equals("topic-025-input")) {}
 
-//                    try {
-//                        Thread.sleep(500);
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    }
-
-            //send data - asynchronous
-
+                //send data - asynchronous
                 producer.send(record, new Callback() {
                     public void onCompletion(RecordMetadata recordMetadata, Exception e) {
                         //executes every time a record is successfully sent or an exception is thrown
                         if (e == null) {
                             //the record was successfully sent
                             logger.info(message.value.toString());
-//                                logger.info("Received new metadata: \n" +
-//                                        "Topic:" + recordMetadata.topic() + "\n" +
-//                                        "Partition:" + recordMetadata.partition() + "\n" +
-//                                        "Offset:" + recordMetadata.offset() + "\n" +
-//                                        "Timestamp:" + recordMetadata.timestamp());
                         } else {
                             logger.error("Error while producing", e);
                         }
@@ -100,17 +83,16 @@ public class ProducerDemoWithCallback {
                 id++;
             }
 
-            //flush data
-            producer.flush();
-            //close and flush producer
-            producer.close();
         }
-
+        //flush data
+        producer.flush();
+        //close and flush producer
+        producer.close();
     }
 
-    private static HashSet<Integer> findAllVehicleIdsSet(String busPositionFile) {
+    private static HashSet<String> findAllVehicleIdsSet(String busPositionFile) {
 
-        HashSet<Integer> vehicleIds = new HashSet<>();
+        HashSet<String> vehicleIds = new HashSet<>();
         String busPositionsFile = "./Dataset/DS_project_dataset/"+busPositionFile;
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
 
@@ -119,7 +101,7 @@ public class ProducerDemoWithCallback {
 
             stream.map(line -> {
                 String[] fields = line.split(",");
-                int vehicleId = Integer.parseInt(fields[2]);
+                String vehicleId = fields[2];
                 return vehicleId; })
                     .forEach(line -> vehicleIds.add(line));
 
@@ -129,7 +111,7 @@ public class ProducerDemoWithCallback {
         return vehicleIds;
     }
 
-    private void initiateTopicAndValueList(int vehicleId, String busPositionFile) {
+    private void initiateTopicAndValueList(String vehicleId, String busPositionFile) {
 
         // Me vasi to vehicle id vres ola ta bus position objects apo to arxeio me ta bus positions
         findFromBusPositionsFile(vehicleId, busPositionFile);
@@ -162,7 +144,7 @@ public class ProducerDemoWithCallback {
         System.out.println();
     }
 
-    private void findFromBusPositionsFile(int vehicleId, String busPositionFile) {
+    private void findFromBusPositionsFile(String vehicleId, String busPositionFile) {
 
         String busPositionsFile = "./Dataset/DS_project_dataset/"+busPositionFile;
         //String busPositionsFile = "C:\\Users\\nikos\\workspace\\aueb\\distributed systems\\ds-project-2019\\Dataset\\DS_project_dataset\\busPositionsNew.txt";
@@ -174,7 +156,7 @@ public class ProducerDemoWithCallback {
                 String[] fields = line.split(",");
                 BusPosition busPosition = new BusPosition(fields[0], fields[1], fields[2], Double.parseDouble(fields[3]), Double.parseDouble(fields[4]), fields[5]);
                 return busPosition; })
-                    .filter(busPositionline -> busPositionline.getVehicleId().equals(String.valueOf(vehicleId)))
+                    .filter(busPositionline -> busPositionline.getVehicleId().equals(vehicleId))
                     .forEach(busPositionline -> publisherBusPositions.add(busPositionline));
 
         } catch(IOException e) {
